@@ -1,0 +1,48 @@
+# HardcoreToggle configuration
+# Colors use & codes, e.g. &c = red, &a = green, &7 = gray
+
+# Text shown before a Hardcore player's name in the tab list
+tab-prefix: "&c☠ "
+
+# Text returned by the %hardcoretoggle_icon% PlaceholderAPI placeholder for
+# Hardcore players (blank/non-Hardcore players get an empty string). Use this
+# in another plugin (e.g. a nametag/tab plugin like TAB) to show the icon
+# alongside LuckPerms prefixes above heads or in the tab list.
+nametag-placeholder-icon: "&c☠ "
+
+# Reviving: right-clicking a downed player's head starts a timed revive
+# (loading bar + note block melody). Set duration to 0 for an instant revive.
+revive-duration-seconds: 3
+# The revive is cancelled if the reviver moves farther than this many blocks from the head
+revive-cancel-distance: 6
+# Play the note block melody while reviving
+revive-sounds: true
+
+# Whether to broadcast to the whole server when someone enables Hardcore mode
+broadcast-on-enable: true
+
+messages:
+  enabled-broadcast: "&c%player% has enabled Hardcore mode!"
+  enabled-self: "&cHardcore mode enabled. Good luck out there."
+  disabled-self: "&aHardcore mode disabled."
+  already-enabled: "&cYou already have Hardcore mode enabled."
+  already-disabled: "&cYou don't have Hardcore mode enabled."
+  cannot-toggle-while-downed: "&cYou can't change Hardcore mode while waiting to be revived."
+  death-title: "&4&lYou've Died"
+  death-subtitle: "&7Someone needs to right-click your head to revive you"
+  death-broadcast: "&4%player% has died! Find their head and right-click it to bring them back."
+  revived-title: "&a&lYou've Been Revived!"
+  revived-subtitle: "&7%reviver% brought you back"
+  revive-broadcast: "&a%reviver% revived %player%!"
+  cannot-self-revive: "&cYou can't revive yourself \u2014 someone else has to do it."
+  no-permission: "&cYou don't have permission to do that."
+  usage: "&cUsage: /hardcore toggle (or /hardcore reload if you're an admin)"
+  reloaded: "&aHardcoreToggle config reloaded."
+  player-not-found: "&cThat player isn't online."
+  force-revived: "&aRevived %player%."
+  not-downed: "&c%player% isn't currently downed."
+  reviving-bar: "&a%spinner% &fReviving &e%player%&f... &7%percent%%"
+  being-revived: "&e%reviver% &7is reviving you... %spinner%"
+  revive-cancelled: "&cRevive cancelled. Stay close to the head until it finishes."
+  already-being-revived: "&cSomeone is already reviving that player."
+  target-offline: "&cThat player is offline right now. They can be revived once they rejoin."

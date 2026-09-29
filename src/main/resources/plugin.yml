@@ -1,0 +1,25 @@
+name: HardcoreToggle
+version: '1.0.0'
+main: com.hardcoretoggle.HardcorePlugin
+api-version: '26.2'
+author: You
+description: Per-player hardcore mode toggle with tab-list marker, death titles, and walk-up revives.
+softdepend: [PlaceholderAPI]
+
+commands:
+  hardcore:
+    description: Toggle your personal hardcore mode.
+    usage: /hardcore toggle
+    permission: hardcoretoggle.use
+    permission-message: "&cYou don't have permission to use hardcore mode."
+
+permissions:
+  hardcoretoggle.use:
+    description: Allows toggling personal hardcore mode.
+    default: true
+  hardcoretoggle.reload:
+    description: Allows reloading HardcoreToggle's config.yml.
+    default: op
+  hardcoretoggle.admin:
+    description: Allows force-reviving yourself or another player without needing someone to walk up to them.
+    default: op
