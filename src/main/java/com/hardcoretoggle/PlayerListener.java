@@ -40,7 +40,13 @@ public class PlayerListener implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.MONITOR)
+    // LOW (not MONITOR): this needs to claim the death block with its head
+    // marker *before* any other plugin's death handler (e.g. a grave/loot
+    // plugin, typically HIGH) picks a spot for its own block. A skull isn't
+    // replaceable, so once ours is down, a well-behaved grave plugin's own
+    // free-spot search will skip it and use an adjacent block instead of
+    // colliding with (and getting overwritten by) this marker.
+    @EventHandler(priority = EventPriority.LOW)
     public void onDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
 

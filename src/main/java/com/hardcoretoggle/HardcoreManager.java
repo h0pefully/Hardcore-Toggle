@@ -2,7 +2,8 @@ package com.hardcoretoggle;
 
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
@@ -47,6 +48,7 @@ public class HardcoreManager {
 
     private final HardcorePlugin plugin;
     private final File dataFile;
+    private final Messages messages;
 
     // Players who have toggled Hardcore mode on.
     private final Set<UUID> hardcorePlayers = new HashSet<>();
@@ -110,6 +112,13 @@ public class HardcoreManager {
     public HardcoreManager(HardcorePlugin plugin) {
         this.plugin = plugin;
         this.dataFile = new File(plugin.getDataFolder(), "data.yml");
+        this.messages = new Messages(plugin);
+        this.messages.load();
+    }
+
+    /** Re-reads the theme/prefix/messages from config.yml. Call after /hardcore reload. */
+    public void reloadMessages() {
+        messages.load();
     }
 
     // ---------------------------------------------------------------
@@ -296,8 +305,9 @@ public class HardcoreManager {
         updateTabList(player);
 
         if (plugin.getConfig().getBoolean("broadcast-on-enable", true)) {
-            Component message = format(plugin.getConfig().getString("messages.enabled-broadcast", "%player% has enabled Hardcore mode!")
-                    .replace("%player%", player.getName()));
+            Component message = messages.get("enabled-broadcast",
+                    "<prefix><player> has enabled <theme>Hardcore mode</theme>!",
+                    Messages.text("player", player.getName()));
             plugin.getServer().broadcast(message);
         }
         return true;
@@ -325,8 +335,8 @@ public class HardcoreManager {
      */
     public void updateTabList(Player player) {
         if (isHardcore(player.getUniqueId())) {
-            String prefix = plugin.getConfig().getString("tab-prefix", "&c\u2620 ");
-            Component prefixComponent = LegacyComponentSerializer.legacyAmpersand().deserialize(prefix);
+            String prefix = plugin.getConfig().getString("tab-prefix", "<red>\u2620 </red>");
+            Component prefixComponent = MiniMessage.miniMessage().deserialize(prefix);
             player.playerListName(prefixComponent.append(Component.text(player.getName())));
         } else {
             player.playerListName(Component.text(player.getName()));
@@ -361,8 +371,8 @@ public class HardcoreManager {
         downedPlayers.put(player.getUniqueId(), new DownedState(deathLocation.clone(), originalBlockData));
         save();
 
-        Component title = format(plugin.getConfig().getString("messages.death-title", "&4&lYou've Died"));
-        Component subtitle = format(plugin.getConfig().getString("messages.death-subtitle", "&7Someone needs to right-click your head to revive you"));
+        Component title = messages.get("death-title", "<dark_red><b>You've Died</b></dark_red>");
+        Component subtitle = messages.get("death-subtitle", "<gray>Someone needs to right-click your head to revive you");
 
         player.showTitle(Title.title(
                 title,
@@ -370,9 +380,9 @@ public class HardcoreManager {
                 Title.Times.times(Duration.ofMillis(500), Duration.ofSeconds(4), Duration.ofSeconds(1))
         ));
 
-        Component deathBroadcast = format(plugin.getConfig().getString("messages.death-broadcast",
-                        "&4%player% has died! Find their head and right-click it to bring them back.")
-                .replace("%player%", player.getName()));
+        Component deathBroadcast = messages.get("death-broadcast",
+                "<prefix><dark_red><player> has died!</dark_red> <gray>Find their head and right-click it to bring them back.",
+                Messages.text("player", player.getName()));
         plugin.getServer().broadcast(deathBroadcast);
     }
 
@@ -399,13 +409,13 @@ public class HardcoreManager {
                 continue;
             }
             if (downedUuid.equals(clicker.getUniqueId())) {
-                clicker.sendMessage(getMessage("cannot-self-revive", "&cYou can't revive yourself \u2014 someone else has to do it."));
+                clicker.sendMessage(getMessage("cannot-self-revive", "<prefix><red>You can't revive yourself \u2014 someone else has to do it."));
                 return true;
             }
 
             Player downedPlayer = plugin.getServer().getPlayer(downedUuid);
             if (downedPlayer == null) {
-                clicker.sendMessage(getMessage("target-offline", "&cThat player is offline right now. They can be revived once they rejoin."));
+                clicker.sendMessage(getMessage("target-offline", "<prefix><red>That player is offline right now. They can be revived once they rejoin."));
                 return true;
             }
 
@@ -420,7 +430,7 @@ public class HardcoreManager {
             return; // already channeling; repeated clicks are ignored
         }
         if (sessionsByTarget.containsKey(downedPlayer.getUniqueId())) {
-            reviver.sendMessage(getMessage("already-being-revived", "&cSomeone is already reviving that player."));
+            reviver.sendMessage(getMessage("already-being-revived", "<prefix><red>Someone is already reviving that player."));
             return;
         }
 
@@ -468,7 +478,7 @@ public class HardcoreManager {
         if (!valid) {
             endSession(session);
             if (reviver.isOnline()) {
-                reviver.sendMessage(getMessage("revive-cancelled", "&cRevive cancelled. Stay close to the head until it finishes."));
+                reviver.sendMessage(getMessage("revive-cancelled", "<prefix><red>Revive cancelled. Stay close to the head until it finishes."));
                 if (sounds) {
                     head.getWorld().playSound(blockCenter(head), Sound.BLOCK_NOTE_BLOCK_BASS, SoundCategory.RECORDS, 1f, 0.5f);
                 }
@@ -489,9 +499,9 @@ public class HardcoreManager {
         session.bar.progress(progress);
         session.bar.name(barTitle(session.targetName, session.step, Math.round(progress * 100)));
 
-        target.sendActionBar(msg("being-revived", "&e%reviver% &7is reviving you... %spinner%",
-                "%reviver%", reviver.getName(),
-                "%spinner%", SPINNER[session.step % SPINNER.length]));
+        target.sendActionBar(getMessage("being-revived", "<yellow><reviver></yellow> <gray>is reviving you... <spinner>",
+                Messages.text("reviver", reviver.getName()),
+                Messages.text("spinner", SPINNER[session.step % SPINNER.length])));
 
         if (sounds) {
             playTick(head, session.step, session.totalSteps);
@@ -515,10 +525,10 @@ public class HardcoreManager {
     }
 
     private Component barTitle(String targetName, int step, int percent) {
-        return msg("reviving-bar", "&a%spinner% &fReviving &e%player%&f... &7%percent%%",
-                "%spinner%", SPINNER[step % SPINNER.length],
-                "%player%", targetName,
-                "%percent%", String.valueOf(percent));
+        return getMessage("reviving-bar", "<green><spinner></green> <white>Reviving <yellow><player></yellow><white>... <gray><percent>%",
+                Messages.text("spinner", SPINNER[step % SPINNER.length]),
+                Messages.text("player", targetName),
+                Messages.text("percent", percent));
     }
 
     // A rising major scale (two octaves) played on note block harp + bell,
@@ -559,9 +569,9 @@ public class HardcoreManager {
         downedPlayer.teleport(state.location());
         downedPlayer.setHealth(downedPlayer.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue());
 
-        Component title = format(plugin.getConfig().getString("messages.revived-title", "&a&lYou've Been Revived!"));
-        Component subtitle = format(plugin.getConfig().getString("messages.revived-subtitle", "&7%reviver% brought you back")
-                .replace("%reviver%", reviver.getName()));
+        Component title = messages.get("revived-title", "<green><b>You've Been Revived!</b></green>");
+        Component subtitle = messages.get("revived-subtitle", "<gray><reviver> brought you back",
+                Messages.text("reviver", reviver.getName()));
 
         downedPlayer.showTitle(Title.title(
                 title,
@@ -569,9 +579,9 @@ public class HardcoreManager {
                 Title.Times.times(Duration.ofMillis(500), Duration.ofSeconds(3), Duration.ofSeconds(1))
         ));
 
-        Component broadcastMessage = format(plugin.getConfig().getString("messages.revive-broadcast", "%reviver% revived %player%!")
-                .replace("%reviver%", reviver.getName())
-                .replace("%player%", downedPlayer.getName()));
+        Component broadcastMessage = messages.get("revive-broadcast", "<prefix><reviver> revived <player>!",
+                Messages.text("reviver", reviver.getName()),
+                Messages.text("player", downedPlayer.getName()));
         plugin.getServer().broadcast(broadcastMessage);
     }
 
@@ -597,7 +607,7 @@ public class HardcoreManager {
         }
         target.setHealth(target.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue());
 
-        Component title = format(plugin.getConfig().getString("messages.revived-title", "&a&lYou've Been Revived!"));
+        Component title = messages.get("revived-title", "<green><b>You've Been Revived!</b></green>");
         target.showTitle(Title.title(
                 title,
                 Component.empty(),
@@ -638,34 +648,13 @@ public class HardcoreManager {
     // Helpers
     // ---------------------------------------------------------------
 
-    private Component format(String raw) {
-        return LegacyComponentSerializer.legacyAmpersand().deserialize(raw);
-    }
-
-    /** Message lookup with any number of placeholder/value pairs. */
-    private Component msg(String key, String fallback, String... placeholderValuePairs) {
-        String raw = plugin.getConfig().getString("messages." + key, fallback);
-        for (int i = 0; i + 1 < placeholderValuePairs.length; i += 2) {
-            raw = raw.replace(placeholderValuePairs[i], placeholderValuePairs[i + 1]);
-        }
-        return format(raw);
-    }
-
     /**
-     * Reads a message from config.yml (under "messages.") and returns it as
-     * a formatted Component, falling back to the given default if missing.
+     * Reads a MiniMessage string from config.yml (under "messages.") and
+     * returns it as a formatted Component, falling back to the given
+     * default if missing. Supports the <prefix>/<theme> shortcuts plus
+     * whatever placeholder resolvers are passed in (e.g. Messages.text("player", name)).
      */
-    public Component getMessage(String key, String fallback) {
-        String raw = plugin.getConfig().getString("messages." + key, fallback);
-        return format(raw);
-    }
-
-    /**
-     * Same as getMessage, but replaces one %placeholder% with a value first
-     * (e.g. "%player%" -> the target's name) before formatting.
-     */
-    public Component getMessage(String key, String fallback, String placeholder, String value) {
-        String raw = plugin.getConfig().getString("messages." + key, fallback).replace(placeholder, value);
-        return format(raw);
+    public Component getMessage(String key, String fallback, TagResolver... resolvers) {
+        return messages.get(key, fallback, resolvers);
     }
 }
